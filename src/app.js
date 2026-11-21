@@ -1,8 +1,11 @@
 import { connectLive } from './transport.js';
 import { demoSession } from './demo.js';
 
+import { groupThreads } from './threads.js';
+
 const $ = id => document.getElementById(id);
 const types = {
+  project: { label: 'Project threads', action: 'Open project discussions', field: 'Project group ID', description: 'Start a topic or reply to an existing project discussion.', empty: 'Start the first project discussion.' },
   direct: { label: 'Direct messages', action: 'Message a teammate', field: 'Teammate user ID', description: 'A private conversation between you and your teammate.', empty: 'Start the conversation with a message.' }
 };
 function element(tag, text, className) {
@@ -32,6 +35,7 @@ function start(key) {
   const saved = localStorage.getItem(namespace);
   rooms = saved ? JSON.parse(saved) : [];
   if (mode === 'Demo' && !saved) {
+    rooms.push({ kind: 'project', direct: false, target: 'Studio launch' });
     rooms.push({ kind: 'direct', direct: true, target: demoUser === 'alex' ? 'mina' : 'alex' });
   }
   $('mode').textContent = mode;
@@ -46,7 +50,7 @@ function sidebar() {
     const heading = element('h3', type.label);
     const add = element('button', '+'); add.setAttribute('aria-label', type.action);
     add.onclick = () => {
-      adding = kind; $('add-title').textContent = type.action; $('target-label').textContent = type.field;
+      adding = kind; $('target').setCustomValidity(''); $('add-title').textContent = type.action; $('target-label').textContent = type.field;
       $('target').value = ''; $('add').showModal();
     };
     heading.append(add); $('rooms').append(heading);
@@ -86,8 +90,22 @@ function render() {
   if (!active) return;
   const sorted = [...messages.values()].sort((a,b) => a.time - b.time || a.id.localeCompare(b.id));
   if (!sorted.length) $('feed').append(element('p', types[active.kind].empty, 'empty'));
-  for (const message of sorted) $('feed').append(row(message));
+  $('prompt').textContent = replyTo ? 'Reply to thread' : active.kind === 'project' ? 'New discussion' : 'Message';
+  $('cancel').hidden = !replyTo;
+  $('send').textContent = replyTo ? 'Send reply ↗' : active.kind === 'project' ? 'Post topic ↗' : 'Send message ↗';
+  if (active.kind !== 'project') {
+    for (const message of sorted) $('feed').append(row(message));
+    return;
+  }
+  for (const thread of groupThreads(sorted)) {
+    const article = thread.root ? row(thread.root) : element('article', 'Earlier topic · load previous messages', 'entry');
+    for (const reply of thread.replies) { const item = row(reply); item.classList.add('reply'); article.append(item); }
+    const button = element('button', 'Reply');
+    button.onclick = () => { replyTo = thread.id; render(); $('body').focus(); };
+    article.append(button); $('feed').append(article);
+  }
 }
+$('cancel').onclick = () => { replyTo = null; render(); };
 $('older').onclick = loadPage;
 $('new-room').onsubmit = event => {
   event.preventDefault(); const target = $('target').value.trim();
@@ -106,10 +124,10 @@ $('compose').onsubmit = async event => {
   const current = generation, draft = $('body').value;
   sending = true; render();
   try {
-    const sent = await session.send(active, text, {});
+    const sent = await session.send(active, text, replyTo ? { replyTo } : {});
     if (current === generation) {
       if ($('body').value === draft) $('body').value = '';
-      messages.set(sent.id, sent); $('notice').textContent = '';
+      replyTo = null; messages.set(sent.id, sent); $('notice').textContent = '';
     }
   } catch (error) { if (current === generation) $('notice').textContent = error.message; }
   finally { if (current === generation) { sending = false; render(); } }

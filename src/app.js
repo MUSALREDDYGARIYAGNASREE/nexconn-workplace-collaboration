@@ -6,6 +6,7 @@ import { groupThreads } from './threads.js';
 const $ = id => document.getElementById(id);
 const types = {
   project: { label: 'Project threads', action: 'Open project discussions', field: 'Project group ID', description: 'Start a topic or reply to an existing project discussion.', empty: 'Start the first project discussion.' },
+  handover: { label: 'Shift handover', action: 'Open handover channel', field: 'Handover group ID', description: 'Brief the incoming shift and confirm who has picked up each handover.', empty: 'Publish the first shift handover.' },
   direct: { label: 'Direct messages', action: 'Message a teammate', field: 'Teammate user ID', description: 'A private conversation between you and your teammate.', empty: 'Start the conversation with a message.' }
 };
 function element(tag, text, className) {
@@ -36,6 +37,7 @@ function start(key) {
   rooms = saved ? JSON.parse(saved) : [];
   if (mode === 'Demo' && !saved) {
     rooms.push({ kind: 'project', direct: false, target: 'Studio launch' });
+    rooms.push({ kind: 'handover', direct: false, target: 'Operations desk' });
     rooms.push({ kind: 'direct', direct: true, target: demoUser === 'alex' ? 'mina' : 'alex' });
   }
   $('mode').textContent = mode;
@@ -61,8 +63,11 @@ function sidebar() {
   }
 }
 async function openRoom(room) {
-  generation++; active = room; replyTo = null; sending = false; messages = new Map(); sidebar();
-  $('body').value = ''; $('notice').textContent = ''; $('older').hidden = true;
+  generation++; $('compose').inert = false; active = room; replyTo = null; sending = false; messages = new Map(); sidebar();
+  $('compose').reset();
+  $('handover-fields').hidden = room?.kind !== 'handover';
+  $('shift').required = room?.kind === 'handover';
+  $('notice').textContent = ''; $('older').hidden = true;
   $('category').textContent = room ? types[room.kind].label : 'Workspace';
   $('title').textContent = room?.target || 'Your conversations';
   $('description').textContent = room ? types[room.kind].description : 'Open a conversation using the + beside a channel type.';
@@ -93,6 +98,22 @@ function render() {
   $('prompt').textContent = replyTo ? 'Reply to thread' : active.kind === 'project' ? 'New discussion' : 'Message';
   $('cancel').hidden = !replyTo;
   $('send').textContent = replyTo ? 'Send reply ↗' : active.kind === 'project' ? 'Post topic ↗' : 'Send message ↗';
+  if (active.kind === 'handover') {
+    $('prompt').textContent = 'Shift summary'; $('send').textContent = 'Publish handover ↗';
+    for (const thread of groupThreads(sorted)) {
+      const article = thread.root ? row(thread.root) : element('article', 'Earlier handover', 'entry');
+      if (thread.root?.detail.shift) article.prepend(element('h3', thread.root.detail.shift));
+      if (thread.root?.detail.followup) article.append(element('b', 'Open items'), element('p', thread.root.detail.followup));
+      for (const reply of thread.replies) article.append(element('p', reply.author + ' · ' + reply.text));
+      if (thread.root && thread.root.author !== session.userId && !thread.replies.some(reply => reply.author === session.userId && reply.detail.ack)) {
+        const button = element('button', 'Acknowledge handover'); button.disabled = sending;
+        button.onclick = () => deliver('Acknowledged handover', { replyTo: thread.id, ack: true });
+        article.append(button);
+      }
+      $('feed').append(article);
+    }
+    return;
+  }
   if (active.kind !== 'project') {
     for (const message of sorted) $('feed').append(row(message));
     return;
@@ -121,17 +142,25 @@ $('target').oninput = () => $('target').setCustomValidity('');
 $('compose').onsubmit = async event => {
   event.preventDefault(); const text = $('body').value.trim();
   if (!text || sending) return;
-  const current = generation, draft = $('body').value;
-  sending = true; render();
+  const detail = active.kind === 'handover'
+    ? { shift: $('shift').value.trim(), followup: $('followup').value.trim() }
+    : replyTo ? { replyTo } : {};
+  if (active.kind === 'handover' && !detail.shift) { $('shift').focus(); return; }
+  await deliver(text, detail, true);
+};
+async function deliver(text, detail, clearDraft = false) {
+  if (sending) return;
+  const current = generation;
+  sending = true; $('compose').inert = true; render();
   try {
-    const sent = await session.send(active, text, replyTo ? { replyTo } : {});
+    const sent = await session.send(active, text, detail);
     if (current === generation) {
-      if ($('body').value === draft) $('body').value = '';
-      replyTo = null; messages.set(sent.id, sent); $('notice').textContent = '';
+      if (clearDraft) { $('compose').reset(); replyTo = null; }
+      messages.set(sent.id, sent); $('notice').textContent = '';
     }
   } catch (error) { if (current === generation) $('notice').textContent = error.message; }
-  finally { if (current === generation) { sending = false; render(); } }
-};
+  finally { if (current === generation) { sending = false; $('compose').inert = false; render(); } }
+}
 $('account').onclick = () => { if (mode === 'Demo') $('connect').showModal(); else location.reload(); };
 $('login').onsubmit = async event => {
   event.preventDefault(); const form = event.currentTarget, submit = form.querySelector('.primary');

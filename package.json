@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test"
+    "test": "playwright test",
+    "test:live": "RELAY_LIVE=1 playwright test --grep Nexconn"
   },
   "dependencies": {
     "@nexconn/chat": "^26.5.1",
     "@nexconn/engine": "^26.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "vite": "^6.4.6"
   }
 }

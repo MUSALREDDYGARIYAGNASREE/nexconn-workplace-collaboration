@@ -1,4 +1,4 @@
-import { connectLive } from './transport.js';
+
 import { demoSession } from './demo.js';
 
 import { groupThreads } from './threads.js';
@@ -43,6 +43,9 @@ function start(key) {
   $('mode').textContent = mode;
   $('identity').textContent = session.userId;
   $('session-note').textContent = mode === 'Demo' ? 'Local browser demo' : 'Nexconn workspace';
+  const peer = demoUser === 'alex' ? 'Mina' : 'Alex';
+  $('peer').hidden = mode !== 'Demo';
+  $('peer').href = '?as=' + peer.toLowerCase(); $('peer').textContent = 'Open as ' + peer + ' ↗';
   $('account').textContent = mode === 'Demo' ? 'Connect Nexconn' : 'End session';
   openRoom(rooms[0]);
 }
@@ -167,8 +170,12 @@ $('login').onsubmit = async event => {
   submit.disabled = true; $('login-error').textContent = 'Connecting…';
   try {
     const key = form.elements.key.value.trim();
-    session = await connectLive(key, form.elements.token.value.trim(), receive);
-    form.reset(); mode = 'Live'; $('connect').close(); start(key);
+    const { connectLive } = await import('./transport.js');
+    const pending = [];
+    session = await connectLive(key, form.elements.token.value.trim(), message => {
+      if (mode === 'Live') receive(message); else pending.push(message);
+    });
+    form.reset(); mode = 'Live'; $('connect').close(); start(key); pending.forEach(receive);
   } catch (error) { $('login-error').textContent = error.message; }
   finally { submit.disabled = false; }
 };

@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relay · Team workspace</title><link rel="stylesheet" href="/src/style.css"></head>
 <body>
 <header><b class="brand"><i>≋</i> Relay</b><span class="divider"></span>Team workspace <button id="account">Connect Nexconn</button></header>
-<div class="layout"><aside><div class="side-head"><h2>Workspace</h2><span id="mode"></span></div><nav id="rooms"></nav><footer><b id="identity"></b><small id="session-note"></small></footer></aside>
+<div class="layout"><aside><div class="side-head"><h2>Workspace</h2><span id="mode"></span></div><nav id="rooms"></nav><footer><b id="identity"></b><small id="session-note"></small><a id="peer" target="_blank" rel="noopener"></a></footer></aside>
 <main><section class="heading"><small id="category"></small><h1 id="title"></h1><p id="description"></p></section>
 <button id="older" hidden>Load earlier messages</button><section id="feed" aria-label="Conversation"></section>
 <form id="compose"><div id="handover-fields" hidden><label for="shift">Incoming shift</label><input id="shift" maxlength="100" placeholder="e.g. Night operations"><label for="followup">Open items for the next shift</label><input id="followup" maxlength="500" placeholder="e.g. Review the outstanding support queue"></div><label for="body" id="prompt">Message</label><textarea id="body" maxlength="3500" rows="2" required></textarea><div class="actions"><button id="cancel" type="button" hidden>Cancel reply</button><button class="primary" id="send">Send message ↗</button></div></form>

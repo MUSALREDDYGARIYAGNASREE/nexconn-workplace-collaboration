@@ -26,7 +26,11 @@ export async function connectLive(key, token, receive) {
   NCEngine.addMessageHandler('relay', new MessageHandler({
     onMessageReceived({ messages }) { messages.map(unpack).filter(Boolean).forEach(receive); }
   }));
-  const { userId } = result(await NCEngine.connect({ token }));
+  const connection = await NCEngine.connect({ token });
+  if (connection.code === 31004) {
+    throw new Error('Nexconn rejected this user access token (31004). Enter a token issued for this App Key and environment.');
+  }
+  const { userId } = result(connection);
   function channel(room) {
     return room.direct ? new DirectChannel(room.target) : new GroupChannel(room.target);
   }

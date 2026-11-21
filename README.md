@@ -1,27 +1,60 @@
-# Relay workplace collaboration
+# Relay · Workplace collaboration
 
-Relay gives a team private conversations, project discussions with threaded replies, and a shift handover channel where an incoming teammate can acknowledge a briefing.
+Use Relay to message a teammate, keep replies with their project topic, and see who picked up the previous shift’s open work.
 
-## Run locally
+## Run the demo
 
-Use Node 22.12 or newer. Run `npm ci`, then `npm run dev` and open the URL Vite prints. For a production build, run `npm run build` and serve the contents of `dist/` over HTTPS.
+You can try all three workflows with two browser tabs. The demo runs locally and needs no Nexconn credentials.
 
-The app opens in a browser-local demo as Alex. Choose **Open as Mina** to try the other side of a conversation in a second tab of the same browser profile. Demo messages persist in this browser and are visible to anyone with access to its local storage.
+1. Install Node.js 22.12 or newer with npm. Check your version with `node -v`.
+2. Open a terminal in the project folder (the one containing `package.json`). For a fresh checkout of this pre-release version, use:
 
-## Connect a team
+   ```sh
+   git clone --branch integration/workplace-collaboration https://github.com/MUSALREDDYGARIYAGNASREE/nexconn-workplace-collaboration.git
+   cd nexconn-workplace-collaboration
+   ```
 
-1. Register two test users in the same Nexconn app and obtain their user access tokens. Create two group channels and add both users to each group. Use one group for project discussions and one for handovers.
-2. In separate browser profiles, choose **Connect Nexconn**, enter the same app key and each teammate's own access token. Relay uses the user ID returned by Nexconn. The form accepts end-user tokens and keeps them in memory.
-3. Use **+** beside Direct messages to open the other user's ID. Use the project and handover **+** controls to open the corresponding group IDs in both profiles.
-4. Post a topic and select **Reply** beneath it. Publish a shift summary with open items, then acknowledge it as the incoming teammate.
+3. Install the dependencies and start the app:
 
-Relay uses Nexconn direct and group channels for delivery and remote history. Replies and acknowledgments refer to their parent message ID in the text message's extra data. Use **Load earlier messages** for older pages. Reloading ends the local live session and requires reconnecting. User registration and group membership are managed in Nexconn.
+   ```sh
+   npm ci
+   npm run dev
+   ```
 
-[Nexconn Web SDK quickstart](https://docs.nexconn.ai/chatsdk-web)
+4. Open the **Local** URL printed in the terminal, usually [localhost:5173](http://localhost:5173). You should see **Demo**, the user **alex**, and the **Studio launch** discussion.
 
-## Verify workflows
+Keep the terminal running while using Relay. Press **Ctrl+C** to stop. Next time, run `npm run dev` from the same folder.
 
-With Chrome installed, run `npm test` for the two-tab demo. For the live test, put the following variables in a local, Git-ignored `.env` file and run `npm run test:live`. This sends test messages to the specified users and groups. Use dedicated test accounts and groups. The app itself never loads these variables into its client bundle.
+## Try it as two teammates
+
+Click **Open as Mina** in Alex’s sidebar. Keep both tabs in the same browser profile so they share the demo’s local message history.
+
+| Workflow | In Alex’s tab | In Mina’s tab |
+| --- | --- | --- |
+| Direct message | Under **Direct messages**, select **mina**, type a message, and click **Send message**. | Select **alex** to read it and send a reply. |
+| Project thread | Open **Studio launch**, enter a question under **New discussion**, and click **Post topic**. | Open **Studio launch** and click **Reply** beneath that question. Alex sees the reply under the same topic. |
+| Shift handover | Open **Operations desk**, enter the incoming shift and summary, add any open items, and click **Publish handover**. | Open **Operations desk** and click **Acknowledge handover**. Alex sees Mina’s acknowledgment on the briefing. |
+
+## Connect to live Nexconn chat
+
+The **App Key** identifies your Nexconn application. Each teammate also needs a **user access token** issued for that same application. If you have only the App Key, you can already run the local demo above.
+
+1. Register two test users and obtain their tokens through the Nexconn Server API. Keep the **App Secret** on the server side. [Nexconn Web SDK quickstart](https://docs.nexconn.ai/chatsdk-web)
+2. Create two separate Nexconn groups, one for project threads and one for handovers. Add both users to both groups and keep the group IDs.
+3. Open Relay in two separate browser profiles. In each, click **Connect Nexconn**, enter the shared App Key and that user’s access token, then click **Connect**. The sidebar shows **Live** and the connected user ID.
+4. Use **+** beside **Direct messages** to enter the other user’s ID. In both profiles, use **+** beside **Project threads** and **Shift handover** to open the corresponding group IDs.
+
+Live messages and history use the Nexconn Chat SDK. Reloading the page returns you to the demo. Choose **Connect Nexconn** to reconnect.
+
+## Build and test
+
+| Command | What it does |
+| --- | --- |
+| `npm run build` | Builds the production site in `dist/` for static hosting over HTTPS. |
+| `npm test` | Starts a local test server and checks all three workflows in Chrome. Install Google Chrome first. The live test is skipped by default. |
+| `npm run test:live` | Sends real test messages between two Nexconn accounts and checks both groups. Use dedicated test users and groups. |
+
+For the live test, set these values in the Git-ignored `.env` beside `package.json`. The browser sign-in form takes credentials directly. The automated test reads them from this file.
 
 ```dotenv
 NEXCONN_APP_KEY=
